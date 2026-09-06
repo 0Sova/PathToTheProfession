@@ -3,10 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Путь в профессию</title>
+    <title>Путь в профессию | ИРИТ-РТФ</title>
+    <!-- Подключение шрифта -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- Подключение CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Путь в профессию</h1>
-    <h3>Найди свою программу в ИРИТ-РТФ</h3>
+
+<div class="container">
+
+    <!-- ПРОГРЕСС-БАР -->
+    <div class="progress-bar">
+        <div class="step active">
+            <div class="icon">🚀</div>
+            <span class="label">Старт</span>
+        </div>
+        <div class="step">
+            <div class="icon">🧭</div>
+            <span class="label">Интересы</span>
+        </div>
+        <div class="step">
+            <div class="icon">📊</div>
+            <span class="label">Навыки</span>
+        </div>
+        <div class="step">
+            <div class="icon">🎯</div>
+            <span class="label">Специальность</span>
+        </div>
+        <div class="step">
+            <div class="icon">🏁</div>
+            <span class="label">Финиш</span>
+        </div>
+    </div>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ -->
+    <div class="content">
+        <h1>Путь в профессию</h1>
+        <p class="subtitle-top">Найди свою образовательную программу в ИРИТ-РТФ</p>
+        <p class="description">
+            Пройди квиз за 5 минут — узнай свою специальность, план на 4 года и миссию до 1 сентября.
+        </p>
+
+        <button class="btn-primary" onclick="alert('Переход к следующему шагу!')">Начать</button>
+
+        <div class="footer-note">
+            <span>ИРИТ-РТФ</span> · Уральский федеральный университет
+        </div>
+    </div>
+
+</div>
+
 </body>
+</html>

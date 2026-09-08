@@ -1,11 +1,12 @@
 // ============================================================
-// index.js — UI и навигация (с подтверждением ответа)
+// index.js — UI и навигация
 // ============================================================
 
 // ===== СОСТОЯНИЕ =====
 let currentQuestionIndex = 0;
 let totalQuestions = 0;
 let selectedProfile = null;
+let selectedProfiles = [];
 
 // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
 
@@ -23,33 +24,33 @@ function getContainer() {
 
 // ===== РАБОТА С LOCALSTORAGE =====
 
-function saveResult(programTitle) {
+function saveQuizData(selectedProgram = null) {
     const data = {
         answers: window.answers || [],
-        selectedProgram: programTitle || null,
+        result: window.lastResult || null,
+        selectedProgram: selectedProgram || null,
         timestamp: Date.now()
     };
     localStorage.setItem('quizResult', JSON.stringify(data));
 }
 
-function loadResult() {
+function loadQuizData() {
     const saved = localStorage.getItem('quizResult');
     if (!saved) return null;
     try {
         const data = JSON.parse(saved);
-        // Проверяем, что данные не старше 7 дней
         if (Date.now() - data.timestamp > 7 * 24 * 60 * 60 * 1000) {
             localStorage.removeItem('quizResult');
             return null;
         }
         return data;
-    } catch (e) {
+    } catch {
         localStorage.removeItem('quizResult');
         return null;
     }
 }
 
-function clearResult() {
+function clearQuizData() {
     localStorage.removeItem('quizResult');
 }
 
@@ -95,11 +96,13 @@ function renderStartScreen() {
 
 // ===== СТАРТ КВИЗА =====
 function startQuiz() {
-    clearResult();
+    clearQuizData();
     currentQuestionIndex = 0;
     totalQuestions = questions.length;
     selectedProfile = null;
+    selectedProfiles = [];
     window.answers = [];
+    window.lastResult = null;
     renderQuestion();
 }
 
@@ -107,7 +110,7 @@ function startQuiz() {
 function renderQuestion() {
     const q = questions[currentQuestionIndex];
     const container = getContainer();
-    selectedProfile = null;
+    selectedProfiles = [];
 
     const shuffledOptions = shuffleArray([...q.options]);
 
@@ -135,17 +138,21 @@ function renderQuestion() {
 }
 
 // ===== ВЫБОР ОТВЕТА (только подсветка) =====
+// ===== ВЫБОР ОТВЕТА (одиночный) =====
 function selectOption(profile, index) {
-    selectedProfile = profile;
-
+    // Сбрасываем подсветку у всех кнопок
     const buttons = document.querySelectorAll('.option-btn');
-    buttons.forEach((btn, i) => {
-        btn.classList.remove('selected');
-        if (i === index) {
-            btn.classList.add('selected');
-        }
-    });
+    buttons.forEach((btn) => btn.classList.remove('selected'));
 
+    // Подсвечиваем выбранную кнопку
+    const selectedBtn = document.querySelector(`.option-btn[data-index="${index}"]`);
+    selectedBtn.classList.add('selected');
+
+    // Сохраняем выбранный профиль
+    selectedProfile = profile;
+    selectedProfiles = [profile];
+
+    // Активируем кнопку подтверждения
     const confirmBtn = document.getElementById('confirmBtn');
     if (confirmBtn) {
         confirmBtn.disabled = false;
@@ -154,17 +161,17 @@ function selectOption(profile, index) {
 
 // ===== ПОДТВЕРЖДЕНИЕ ОТВЕТА =====
 function confirmAnswer() {
-    if (!selectedProfile) {
-        alert('Сначала выбери вариант ответа!');
+    if (selectedProfiles.length === 0) {
+        alert('Выбери хотя бы один вариант!');
         return;
     }
 
     if (typeof window.answers === 'undefined') {
         window.answers = [];
     }
-    window.answers.push(selectedProfile);
+    window.answers.push(selectedProfiles);
 
-    console.log(`Ответ сохранён: ${selectedProfile}`);
+    console.log(`Ответ сохранён: ${selectedProfiles.join(', ')}`);
 
     currentQuestionIndex++;
 
@@ -187,10 +194,12 @@ function findProgram(title) {
     return null;
 }
 
-// ===== РЕЗУЛЬТАТ (список программ) =====
+// ===== ОТРИСОВКА РЕЗУЛЬТАТА (список программ) =====
 function renderResult() {
     const container = getContainer();
     const result = calculateResult(window.answers);
+    window.lastResult = result;
+    saveQuizData(null); // сохраняем результат без выбранной программы
     
     const axisNames = {
         'A': '🧠 Искусственный интеллект и алгоритмы',
@@ -291,17 +300,12 @@ function showProgramDetail(title) {
 
 // ===== ВЫБОР ПРОГРАММЫ (ФИНАЛЬНЫЙ ЭКРАН) =====
 function selectProgram(title) {
-    // Сохраняем выбранную программу в localStorage
-    saveResult(title);
-
-    // Получаем детали программы (Roadmap и Миссию)
+    saveQuizData(title); // сохраняем с выбранной программой
     const program = getProgramDetails(title);
     if (!program) {
         alert('Ошибка: данные по программе не найдены.');
         return;
     }
-
-    // Рендерим финальный экран
     renderFinalScreen(program);
 }
 
@@ -309,7 +313,6 @@ function selectProgram(title) {
 function renderFinalScreen(program) {
     const container = getContainer();
 
-    // Генерируем HTML для Roadmap
     let roadmapHtml = '';
     if (program.roadmap && program.roadmap.length > 0) {
         roadmapHtml = program.roadmap.map(item => `
@@ -334,7 +337,6 @@ function renderFinalScreen(program) {
         roadmapHtml = '<p class="no-data">Информация о roadmap временно отсутствует.</p>';
     }
 
-    // Генерируем HTML для Миссии
     let missionsHtml = '';
     if (program.missions && program.missions.length > 0) {
         missionsHtml = program.missions.map((mission, index) => `
@@ -385,32 +387,89 @@ function renderFinalScreen(program) {
     updateProgress(4);
 }
 
-// ===== СБРОС КВИЗА =====
-function resetQuiz() {
-    clearResult();
-    window.answers = [];
-    currentQuestionIndex = 0;
-    renderStartScreen();
+// ===== ВОССТАНОВЛЕНИЕ СОХРАНЁННОГО РЕЗУЛЬТАТА =====
+function renderResultFromSaved(result) {
+    const container = getContainer();
+    const axisNames = {
+        'A': '🧠 Искусственный интеллект и алгоритмы',
+        'B': '🔧 Радиотехника и электроника',
+        'C': '💻 Программирование и разработка ПО',
+        'D': '🛡️ Информационная безопасность',
+        'E': '📡 Сети и телекоммуникации'
+    };
+    
+    let html = `
+        <div class="result-container">
+            <h2>🎯 Твои направления</h2>
+            <p class="subtitle-top">На основе твоих ответов мы подобрали программы</p>
+            
+            <div class="result-programs">
+                ${result.programs.map((programs, index) => `
+                    <div class="program-card">
+                        <h3>${index === 0 ? '⭐ Основное направление' : '🔄 Альтернатива'}</h3>
+                        <p class="program-axis">${axisNames[result.axes[index]] || result.axes[index]}</p>
+                        ${programs.map(p => `
+                            <div class="program-item" onclick="showProgramDetail('${p.title}')">
+                                <div class="program-header">
+                                    <div class="program-title-row">
+                                        <strong>${p.title}</strong>
+                                        <span class="program-code-inline">${p.code}</span>
+                                    </div>
+                                    ${p.tags ? p.tags.map(tag => `<span class="program-tag">${tag}</span>`).join('') : ''}
+                                </div>
+                                <div class="program-keywords">
+                                    ${p.keywords ? p.keywords.map(kw => `<span class="keyword">${kw}</span>`).join('') : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="result-actions">
+                <button class="btn-primary" onclick="resetQuiz()">🔄 Пройти заново</button>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    updateProgress(3);
 }
 
-// ===== ВОССТАНОВЛЕНИЕ СОХРАНЁННОГО РЕЗУЛЬТАТА =====
 function restoreSavedResult() {
-    const saved = loadResult();
-    if (!saved || !saved.selectedProgram) return false;
+    const saved = loadQuizData();
+    if (!saved) return false;
 
-    // Восстанавливаем ответы
     if (saved.answers && saved.answers.length > 0) {
         window.answers = saved.answers;
     }
 
-    // Находим программу и показываем финальный экран
-    const program = getProgramDetails(saved.selectedProgram);
-    if (program) {
-        renderFinalScreen(program);
+    // Если выбрана программа — показываем финальный экран
+    if (saved.selectedProgram) {
+        const program = getProgramDetails(saved.selectedProgram);
+        if (program) {
+            renderFinalScreen(program);
+            return true;
+        }
+    }
+
+    // Если есть результат, но программа не выбрана — показываем список программ
+    if (saved.result) {
+        window.lastResult = saved.result;
+        renderResultFromSaved(saved.result);
         return true;
     }
 
     return false;
+}
+
+// ===== СБРОС КВИЗА =====
+function resetQuiz() {
+    clearQuizData();
+    window.answers = [];
+    window.lastResult = null;
+    currentQuestionIndex = 0;
+    renderStartScreen();
 }
 
 // ===== СТАРТ =====
@@ -420,8 +479,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     window.answers = [];
+    window.lastResult = null;
 
-    // Пробуем восстановить сохранённый результат
     const restored = restoreSavedResult();
     if (!restored) {
         renderStartScreen();

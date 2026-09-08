@@ -283,7 +283,7 @@ function showProgramDetail(title) {
             </div>
             
             <div class="detail-section">
-                <h4>🔑 Ключевые навыки</h4>
+                <h4>🔑 Ключевые слова</h4>
                 <div class="detail-keywords">
                     ${program.keywords ? program.keywords.map(kw => `<span class="keyword">${kw}</span>`).join('') : ''}
                 </div>
